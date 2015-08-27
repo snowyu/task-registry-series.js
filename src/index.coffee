@@ -3,13 +3,13 @@ isArray           = require 'util-ex/lib/is/type/array'
 isObject          = require 'util-ex/lib/is/type/object'
 Task              = require 'task-registry'
 once              = require 'once'
-tick              = require 'next-tick'
 register          = Task.register
 aliases           = Task.aliases
 defineProperties  = Task.defineProperties
 getObjectKeys     = Object.keys
 
 INVALID_ARGUMENT  = 'Task argument should be a task name or object'
+MISS_TASKS_OPTION = 'missing tasks option'
 
 module.exports = class SeriesTask
   register SeriesTask
@@ -24,74 +24,86 @@ module.exports = class SeriesTask
       type: 'Function'
       value: console.error
   constructor: -> return super
-  error: (err)->
+  error: (err, aOptions, raiseError = true)->
+    aOptions ?= @
     if isString err
       err = new TypeError err
-    if @force
-      @log err
+    if aOptions.force or !raiseError
+      aOptions.log err
     else
       throw err
-    return
-  _execTaskSync: (aTask, result)->
+    err
+  _execTaskSync: (aTask, result, aOptions)->
     if isString aTask
       task = Task aTask
       if task
         try
           result.push task.executeSync()
         catch err
-          @error err
+          @error err, aOptions
+          result.push undefined
       else
-        @error 'Task "' + aTask + '" is not exists.'
-    else if isObject
+        @error 'Task "' + aTask + '" is not exists.', aOptions
+        result.push undefined
+    else if isObject aTask
       for k,v of aTask
         task = Task k
         if task
           try
             result.push task.executeSync(v)
           catch err
-            @error err
+            @error err, aOptions
+            result.push undefined
         else
-          @error 'Task "' + k + '" is not exists.'
+          @error 'Task "' + k + '" is not exists.', aOptions
+          result.push undefined
     else
-      @error INVALID_ARGUMENT
+      @error INVALID_ARGUMENT, aOptions
+      result.push undefined
     result
-  _executeSync: (aTasks)->
+  _executeSync: (aOptions)->
+    vTasks = aOptions.tasks
     result = []
-    if isArray aTasks
-      aTasks.forEach (obj)=>
-        @_execTaskSync obj, result
+    if isArray vTasks
+      vTasks.forEach (obj)=>
+        @_execTaskSync obj, result, aOptions
     else
-      @_execTaskSync aTasks, result
+      @_execTaskSync vTasks, result, aOptions
     result
-  _executePipeSync: (aTasks)->
+  _executePipeSync: (aOptions)->
+    vTasks = aOptions.tasks
     result = null
-    if isArray aTasks
-      aTasks.forEach (obj, i)=>
+    first = true
+    if isArray vTasks
+      vTasks.forEach (obj, i)=>
         if isString obj
           task = Task obj
           if task
+            first = false if first
             try
               result = task.executeSync(result)
             catch err
-              @error err
+              @error err, aOptions
           else
-            @error 'Task "' + obj + '" is not exists.'
+            @error 'Task "' + obj + '" is not exists.', aOptions
         else if isObject obj
           for k,v of obj
             task = Task k
-            result = v if i == 0
+            if first
+              result = v
+              first = false
             if task
               try
                 result = task.executeSync(result)
               catch err
-                @error err
+                @error err, aOptions
             else
-              @error 'Task "' + k + '" is not exists.'
+              @error 'Task "' + k + '" is not exists.', aOptions
         else
-          @error INVALID_ARGUMENT
+          first = false if first
+          @error INVALID_ARGUMENT, aOptions
     else
-      first = true
-      for k,v of obj
+      for k,v of vTasks
         task = Task k
         if first
           result = v
@@ -100,11 +112,12 @@ module.exports = class SeriesTask
           try
             result = task.executeSync(result)
           catch err
-            @error err
+            @error err, aOptions
         else
-          @error 'Task "' + k + '" is not exists.'
+          @error 'Task "' + k + '" is not exists.', aOptions
     result
-  _execute: (aTasks, done)->
+  _execute: (aOptions, done)->
+    vTasks = aOptions.tasks
     results = []
     idx = 0
 
@@ -112,69 +125,75 @@ module.exports = class SeriesTask
       keys = getObjectKeys aTask
       vObjLen = keys.length
       vObjIx = 0
-      _nextObj = (name)=>
+      _nextObj = (name)->
         task = Task name
         if task
-          task.execute aTask[name], once (err, result)=>
+          task.execute aTask[name], once (err, result)->
             if err
-              @log err
-              unless @force
+              aOptions.log err
+              unless aOptions.force
                 return done(err)
             results.push result
             if ++vObjIx < vObjLen
               _nextObj(keys[vObjIx])
             else if length and ++idx < length
-              nextArray(aTasks[idx])
+              nextArray(vTasks[idx])
             else
               done(null, results)
-        else if @force
+        else if aOptions.force
+          aOptions.log new TypeError('Task "' + name + '" is not exists.')
+          results.push undefined
           if ++vObjIx < vObjLen
-            tick _nextObj(keys[vObjIx])
+            _nextObj(keys[vObjIx])
           else if length and ++idx < length
-            nextArray(aTasks[idx])
+            nextArray(vTasks[idx])
           else
             done(null, results)
         else
-          return done new TypeError('task ', name, ' is not exists.')
+          return done new TypeError('Task "'+ name+ '" is not exists.')
       _nextObj(keys[vObjIx])
 
-    nextArray = (aTask)=>
+    nextArray = (aTask)->
       if isString aTask
         task = Task aTask
         if task
-          task.execute once (err, result)=>
+          task.execute once (err, result)->
             if err
-              @log err
-              return done(err) unless @force
+              return done(err) unless aOptions.force
             results.push result
             if ++idx < length
-              nextArray(aTasks[idx])
+              nextArray(vTasks[idx])
             else
               done(null, results)
-        else if @force
+        else if aOptions.force
+          aOptions.log new TypeError('Task "' + aTask + '" is not exists.')
+          results.push undefined
           if ++idx < length
-            tick nextArray(aTasks[idx])
+            nextArray(vTasks[idx])
           else
             done(null, results)
         else
-          return done new TypeError('task ', aTask, ' is not exists.')
+          return done new TypeError('Task "' + aTask + '" is not exists.')
       else if isObject aTask
         nextObj(aTask)
-      else if @force
+      else if aOptions.force
+        results.push undefined
+        aOptions.log new TypeError(INVALID_ARGUMENT)
         if ++idx < length
-          tick nextArray(aTasks[idx])
+          nextArray(vTasks[idx])
         else
           done(null, results)
       else
         return done new TypeError(INVALID_ARGUMENT)
 
-    if isArray aTasks
-      length = aTasks.length
-      nextArray(aTasks[idx])
+    if isArray vTasks
+      length = vTasks.length
+      nextArray(vTasks[idx])
     else
-      nextObj(aTasks)
+      nextObj(vTasks)
     return
-  _executePipe: (aTasks, done)->
+  _executePipe: (aOptions, done)->
+    vTasks = aOptions.tasks
     results = null
     idx = 0
     first = true
@@ -183,102 +202,122 @@ module.exports = class SeriesTask
       keys = getObjectKeys aTask
       vObjLen = keys.length
       vObjIx = 0
-      _nextObj = (name)=>
+      _nextObj = (name)->
         task = Task name
         if task
           if first
             results = aTask[name]
             first = false
-          task.execute results, once (err, result)=>
+          task.execute results, once (err, result)->
             if err
-              @log err
-              unless @force
+              aOptions.log err
+              unless aOptions.force
                 return done(err)
             results = result
             if ++vObjIx < vObjLen
               _nextObj(keys[vObjIx])
             else if length and ++idx < length
-              nextArray(aTasks[idx])
+              nextArray(vTasks[idx])
             else
               done(null, results)
-        else if @force
+        else if aOptions.force
+          aOptions.log new TypeError('Task "' + name + '" is not exists.')
           if ++vObjIx < vObjLen
-            tick _nextObj(keys[vObjIx])
+            _nextObj(keys[vObjIx])
           else if length and ++idx < length
-            nextArray(aTasks[idx])
+            nextArray(vTasks[idx])
           else
             done(null, results)
         else
-          return done new TypeError('task ', name, ' is not exists.')
+          return done new TypeError('Task "'+ name + '" is not exists.')
       _nextObj(keys[vObjIx])
 
-    nextArray = (aTask)=>
+    nextArray = (aTask)->
       if isString aTask
         task = Task aTask
         if task
           first = false if first
-          task.execute results, once (err, result)=>
+          task.execute results, once (err, result)->
             if err
-              @log err
-              return done(err) unless @force
+              aOptions.log err
+              return done(err) unless aOptions.force
             results = result
             if ++idx < length
-              nextArray(aTasks[idx])
+              nextArray(vTasks[idx])
             else
               done(null, results)
-        else if @force
+        else if aOptions.force
+          aOptions.log new TypeError('Task "' + aTask + '" is not exists.')
           if ++idx < length
-            tick nextArray(aTasks[idx])
+            nextArray(vTasks[idx])
           else
             done(null, results)
         else
-          return done new TypeError('task ', aTask, ' is not exists.')
+          return done new TypeError('Task "' + aTask + '" is not exists.')
       else if isObject aTask
         nextObj(aTask)
-      else if @force
+      else if aOptions.force
+        first = false if first
+        aOptions.log new TypeError INVALID_ARGUMENT
         if ++idx < length
-          tick nextArray(aTasks[idx])
+          nextArray(vTasks[idx])
         else
           done(null, results)
       else
         return done new TypeError(INVALID_ARGUMENT)
 
-    if isArray aTasks
-      length = aTasks.length
-      nextArray(aTasks[idx])
+    if isArray vTasks
+      length = vTasks.length
+      nextArray(vTasks[idx])
     else
-      nextObj(aTasks)
+      nextObj(vTasks)
     return
 
   executeSync: (aOptions)->
     if isString aOptions
       vTasks = [aOptions]
+      aOptions = {tasks: vTasks}
     else if isArray aOptions
       vTasks = aOptions
+      aOptions = {tasks: vTasks}
     else if aOptions
       vPipeline = aOptions.pipeline
       vTasks = aOptions.tasks
+    aOptions = @mergeTo(aOptions)
 
     if vTasks
       if vPipeline
-        result = @_executePipeSync(vTasks)
+        result = @_executePipeSync(aOptions)
       else
-        result = @_executeSync(vTasks)
+        result = @_executeSync(aOptions)
+    else
+      err = new TypeError MISS_TASKS_OPTION
+      @error err, aOptions
     result
 
   execute: (aOptions, done)->
     if isString aOptions
       vTasks = [aOptions]
+      aOptions = {tasks: vTasks}
     else if isArray aOptions
       vTasks = aOptions
+      aOptions = {tasks:vTasks}
     else if aOptions
       vPipeline = aOptions.pipeline
       vTasks = aOptions.tasks
     done = once(done)
+    aOptions = @mergeTo(aOptions)
 
     if vTasks
       if vPipeline
-        result = @_executePipe(vTasks, done)
+        result = @_executePipe(aOptions, done)
       else
-        result = @_execute(vTasks, done)
+        result = @_execute(aOptions, done)
+    else
+      err = new TypeError MISS_TASKS_OPTION
+      if aOptions.force
+        aOptions.log err
+        err = null
+      done(err)
+
     return @

@@ -25,7 +25,6 @@
     "series"
   ],
   "dependencies": {
-    "next-tick": "^0.2.2",
     "once": "^1.3.2",
     "task-registry": "^0.2.2",
     "util-ex": "^0.3.14"

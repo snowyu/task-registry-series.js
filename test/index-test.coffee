@@ -46,10 +46,6 @@ describe 'Tasks', ->
     Add1Task::_executeSync.reset()
     Add2Task::_executeSync.reset()
   it 'should get series via aliases', ->
-    tasks = Task 'tasks'
-    expect(tasks).be.instanceOf Tasks
-    tasks = Task 'Tasks'
-    expect(tasks).be.instanceOf Tasks
     tasks = Task 'series'
     expect(tasks).be.instanceOf Tasks
     tasks = Task 'Series'

@@ -13,7 +13,7 @@ MISS_TASKS_OPTION = 'missing tasks option'
 
 module.exports = class SeriesTask
   register SeriesTask
-  aliases SeriesTask, 'tasks', 'Tasks', 'series'
+  aliases SeriesTask, 'series'
   defineProperties SeriesTask,
     force:
       type: 'Boolean'

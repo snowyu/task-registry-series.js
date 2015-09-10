@@ -20,16 +20,17 @@ module.exports = class SeriesTask
     pipeline:
       type: 'Boolean'
       value: false
-    log:
-      type: 'Function'
-      value: console.error
+    logger: # it should be an object with log, error methods at least.
+      type: 'Object'
+      clone: false
+      value: console
   constructor: -> return super
   error: (err, aOptions, raiseError = true)->
     aOptions ?= @
     if isString err
       err = new TypeError err
     if aOptions.force or !raiseError
-      aOptions.log err
+      aOptions.logger.error err
     else
       throw err
     err
@@ -130,7 +131,7 @@ module.exports = class SeriesTask
         if task
           task.execute aTask[name], once (err, result)->
             if err
-              aOptions.log err
+              aOptions.logger.error err
               unless aOptions.force
                 return done(err)
             results.push result
@@ -141,7 +142,7 @@ module.exports = class SeriesTask
             else
               done(null, results)
         else if aOptions.force
-          aOptions.log new TypeError('Task "' + name + '" is not exists.')
+          aOptions.logger.error new TypeError('Task "' + name + '" is not exists.')
           results.push undefined
           if ++vObjIx < vObjLen
             _nextObj(keys[vObjIx])
@@ -166,7 +167,7 @@ module.exports = class SeriesTask
             else
               done(null, results)
         else if aOptions.force
-          aOptions.log new TypeError('Task "' + aTask + '" is not exists.')
+          aOptions.logger.error new TypeError('Task "' + aTask + '" is not exists.')
           results.push undefined
           if ++idx < length
             nextArray(vTasks[idx])
@@ -178,7 +179,7 @@ module.exports = class SeriesTask
         nextObj(aTask)
       else if aOptions.force
         results.push undefined
-        aOptions.log new TypeError(INVALID_ARGUMENT)
+        aOptions.logger.error new TypeError(INVALID_ARGUMENT)
         if ++idx < length
           nextArray(vTasks[idx])
         else
@@ -210,7 +211,7 @@ module.exports = class SeriesTask
             first = false
           task.execute results, once (err, result)->
             if err
-              aOptions.log err
+              aOptions.logger.error err
               unless aOptions.force
                 return done(err)
             results = result
@@ -221,7 +222,7 @@ module.exports = class SeriesTask
             else
               done(null, results)
         else if aOptions.force
-          aOptions.log new TypeError('Task "' + name + '" is not exists.')
+          aOptions.logger.error new TypeError('Task "' + name + '" is not exists.')
           if ++vObjIx < vObjLen
             _nextObj(keys[vObjIx])
           else if length and ++idx < length
@@ -239,7 +240,7 @@ module.exports = class SeriesTask
           first = false if first
           task.execute results, once (err, result)->
             if err
-              aOptions.log err
+              aOptions.logger.error err
               return done(err) unless aOptions.force
             results = result
             if ++idx < length
@@ -247,7 +248,7 @@ module.exports = class SeriesTask
             else
               done(null, results)
         else if aOptions.force
-          aOptions.log new TypeError('Task "' + aTask + '" is not exists.')
+          aOptions.logger.error new TypeError('Task "' + aTask + '" is not exists.')
           if ++idx < length
             nextArray(vTasks[idx])
           else
@@ -258,7 +259,7 @@ module.exports = class SeriesTask
         nextObj(aTask)
       else if aOptions.force
         first = false if first
-        aOptions.log new TypeError INVALID_ARGUMENT
+        aOptions.logger.error new TypeError INVALID_ARGUMENT
         if ++idx < length
           nextArray(vTasks[idx])
         else
@@ -316,7 +317,7 @@ module.exports = class SeriesTask
     else
       err = new TypeError MISS_TASKS_OPTION
       if aOptions.force
-        aOptions.log err
+        aOptions.logger.error err
         err = null
       done(err)
 

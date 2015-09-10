@@ -41,10 +41,22 @@ class Add2Task
     aOptions = 1 unless isNumber aOptions
     aOptions+2
 
+fakeLogger =
+  logs: []
+  errors: []
+  log: sinon.spy (msg)-> @logs.push msg
+  error: sinon.spy (err)-> @errors.push err
+  reset: ->
+    @logs = []
+    @errors = []
+    @log.reset()
+    @error.reset()
+
 describe 'Tasks', ->
   beforeEach ->
     Add1Task::_executeSync.reset()
     Add2Task::_executeSync.reset()
+    fakeLogger.reset()
   it 'should get series via aliases', ->
     tasks = Task 'series'
     expect(tasks).be.instanceOf Tasks
@@ -118,15 +130,18 @@ describe 'Tasks', ->
         'Task "None" is not exists'
 
     it 'should force invalid tasks to continue', ->
-      logFn = sinon.spy()
-      result = tasks.executeSync log:logFn, force:true
+      #logFn = sinon.spy()
+      logFn = fakeLogger.error
+      result = tasks.executeSync logger:fakeLogger, force:true
       expect(result).be.not.exist
       expect(logFn).be.callOnce
       expect(logFn).be.calledWith new TypeError 'missing tasks option'
     it 'should force tasks to continue', ->
-      errs = []
-      logFn = sinon.spy (err)->errs.push err
-      result = tasks.executeSync log:logFn, force:true, tasks:['Error', true, 'Add1', 'None', {Add2:12, None:11, Add1:2}]
+      #errs = []
+      #logFn = sinon.spy (err)->errs.push err
+      errs = fakeLogger.errors
+      logFn = fakeLogger.error
+      result = tasks.executeSync logger:fakeLogger, force:true, tasks:['Error', true, 'Add1', 'None', {Add2:12, None:11, Add1:2}]
       expect(result).deep.equal [undefined, undefined, 2, undefined, 14, undefined, 3]
       expect(Add1Task::_executeSync).be.callOnce
       expect(Add2Task::_executeSync).be.callOnce
@@ -137,8 +152,9 @@ describe 'Tasks', ->
       expect(errs[1]).be.deep.equal new TypeError 'Task argument should be a task name or object'
 
     it 'should force pipeline tasks to continue', ->
-      logFn = sinon.spy()
-      result = tasks.executeSync log:logFn, pipeline:true, force:true, tasks:['Error', true, 'Add1':2, 'None', {Add2:12, None:11, Add1:2}]
+      #logFn = sinon.spy()
+      logFn = fakeLogger.error
+      result = tasks.executeSync logger:fakeLogger, pipeline:true, force:true, tasks:['Error', true, 'Add1':2, 'None', {Add2:12, None:11, Add1:2}]
       expect(result).deep.equal 5
       expect(Add1Task::_executeSync).be.callOnce
       expect(Add2Task::_executeSync).be.callOnce
@@ -242,8 +258,9 @@ describe 'Tasks', ->
         done()
 
     it 'should force invalid tasks to continue', (done)->
-      logFn = sinon.spy()
-      tasks.execute log:logFn, force:true, (err, result)->
+      #logFn = sinon.spy()
+      logFn = fakeLogger.error
+      tasks.execute logger:fakeLogger, force:true, (err, result)->
         unless err
           expect(result).be.not.exist
           expect(logFn).be.callOnce
@@ -251,8 +268,9 @@ describe 'Tasks', ->
         done(err)
 
     it 'should force tasks to continue', (done)->
-      logFn = sinon.spy()
-      tasks.execute log:logFn, force:true, tasks:['Add1', 'None', {Add2:12, None:11}], (err, result)->
+      #logFn = sinon.spy()
+      logFn = fakeLogger.error
+      tasks.execute logger:fakeLogger, force:true, tasks:['Add1', 'None', {Add2:12, None:11}], (err, result)->
         unless err
           expect(result).deep.equal [2, undefined, 14, undefined]
           expect(Add1Task::_executeSync).be.callOnce
@@ -261,8 +279,8 @@ describe 'Tasks', ->
           expect(logFn).be.calledWith new TypeError 'Task "None" is not exists.'
         done(err)
     it 'should force tasks to continue 1', (done)->
-      logFn = sinon.spy()
-      tasks.execute log:logFn, force:true, tasks:['Add1', 'None', {Add2:12, None:11, Add1:2}], (err, result)->
+      logFn = fakeLogger.error
+      tasks.execute logger:fakeLogger, force:true, tasks:['Add1', 'None', {Add2:12, None:11, Add1:2}], (err, result)->
         unless err
           expect(result).deep.equal [2, undefined, 14, undefined, 3]
           expect(Add1Task::_executeSync).be.callOnce
@@ -271,9 +289,9 @@ describe 'Tasks', ->
           expect(logFn).be.calledWith new TypeError 'Task "None" is not exists.'
         done(err)
     it 'should force tasks to continue 2', (done)->
-      errs = []
-      logFn = sinon.spy (err)->errs.push err
-      tasks.execute log:logFn, force:true, tasks:[Error:1,'Add1', true, 'None', {Add2:12, None:11}, 'Add1'], (err, result)->
+      errs = fakeLogger.errors
+      logFn = fakeLogger.error
+      tasks.execute logger:fakeLogger, force:true, tasks:[Error:1,'Add1', true, 'None', {Add2:12, None:11}, 'Add1'], (err, result)->
         unless err
           expect(result).deep.equal [undefined, 2, undefined, undefined, 14, undefined, 2]
           expect(Add1Task::_executeSync).be.callOnce
@@ -285,8 +303,8 @@ describe 'Tasks', ->
         done(err)
 
     it 'should force pipeline tasks to continue', (done)->
-      logFn = sinon.spy()
-      tasks.execute log:logFn, pipeline:true, force:true, tasks:['Error', 'Add1', 'None', {Add2:12, None:11}], (err, result)->
+      logFn = fakeLogger.error
+      tasks.execute logger:fakeLogger, pipeline:true, force:true, tasks:['Error', 'Add1', 'None', {Add2:12, None:11}], (err, result)->
         unless err
           expect(result).deep.equal 4
           expect(Add1Task::_executeSync).be.callOnce
@@ -295,8 +313,8 @@ describe 'Tasks', ->
           expect(logFn).be.calledWith new TypeError 'Task "None" is not exists.'
         done(err)
     it 'should force pipeline tasks to continue 1', (done)->
-      logFn = sinon.spy()
-      tasks.execute log:logFn, pipeline:true, force:true, tasks:['Add1':2, 'None', {Add2:12, None:11, Add1:2}], (err, result)->
+      logFn = fakeLogger.error
+      tasks.execute logger:fakeLogger, pipeline:true, force:true, tasks:['Add1':2, 'None', {Add2:12, None:11, Add1:2}], (err, result)->
         unless err
           expect(result).deep.equal 6
           expect(Add1Task::_executeSync).be.callOnce
@@ -305,9 +323,9 @@ describe 'Tasks', ->
           expect(logFn).be.calledWith new TypeError 'Task "None" is not exists.'
         done(err)
     it 'should force pipeline tasks to continue 2', (done)->
-      errs = []
-      logFn = sinon.spy (err)->errs.push err
-      tasks.execute log:logFn, pipeline:true, force:true, tasks:[Error:1, true, 'Add1':2, 'None', {Add2:12, None:11}, 'Add1'], (err, result)->
+      errs = fakeLogger.errors
+      logFn = fakeLogger.error
+      tasks.execute logger:fakeLogger, pipeline:true, force:true, tasks:[Error:1, true, 'Add1':2, 'None', {Add2:12, None:11}, 'Add1'], (err, result)->
         unless err
           expect(result).deep.equal 5
           expect(Add1Task::_executeSync).be.callOnce

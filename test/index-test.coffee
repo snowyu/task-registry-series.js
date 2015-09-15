@@ -119,7 +119,7 @@ describe 'Tasks', ->
       should.throw tasks.executeSync.bind(tasks, 'Error'), 'MyError'
       should.throw tasks.executeSync.bind(tasks, tasks:{'Error':123}), 'MyError'
     it 'should throw error when a task not exists', ->
-      should.throw tasks.executeSync.bind(tasks, tasks:['Add1', 'None']), 'Task "None" is not exists'
+      should.throw tasks.executeSync.bind(tasks, tasks:'None'), 'Task "None" is not exists'
     it 'should throw error when a task not exists via array', ->
       should.throw tasks.executeSync.bind(tasks, ['Add1', 'None']), 'Task "None" is not exists'
     it 'should throw error when a task not exists with argument', ->
@@ -135,6 +135,67 @@ describe 'Tasks', ->
     it 'should throw error when a task not exists as pipeline with string', ->
       should.throw tasks.executeSync.bind(tasks, pipeline:true, tasks:['Add1':1, 'None']),
         'Task "None" is not exists'
+
+    it 'should not throw error when an invalid arguments and raiseError is false', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:[true, 'None'])
+      expect(result).to.have.length 1
+      expect(result[0]).to.be.not.exist
+      expect(errs).have.length 1
+      expect(errs[0][0]).be.equal 'Task argument should be a task name or object'
+    it 'should not throw error when a task throw error and raiseError is false', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:'Error')
+      expect(result).to.have.length 1
+      expect(result[0]).to.be.not.exist
+      expect(errs).have.length 1
+      expect(errs[0][1]).be.equal 'MyError'
+      fakeLogger.reset()
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:'Error':123)
+      expect(result).to.have.length 1
+      expect(result[0]).to.be.not.exist
+      expect(errs).have.length 1
+      expect(errs[0][1]).be.equal 'MyError'
+    it 'should not throw error when a task not exists and raiseError is false', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:'None')
+      expect(result).to.have.length 1
+      expect(result[0]).to.be.not.exist
+      expect(errs).have.length 1
+      expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+    it 'should not throw error when a task not exists via array and raiseError is false', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:['Add1', 'None'])
+      expect(result).to.have.length 2
+      expect(result[1]).to.be.not.exist
+      expect(errs).have.length 1
+      expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+    it 'should not throw error when a task not exists via object and raiseError is false', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:'Add1':1, 'None':23)
+      expect(result).to.have.length 2
+      expect(result[1]).to.be.not.exist
+      expect(errs).have.length 1
+      expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+    it 'should not throw error when a task not exists as pipeline via object and raiseError is false', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, pipeline:true, raiseError:false, tasks:'Add1':1, 'None':23)
+      expect(result).to.be.equal 2
+      expect(errs).have.length 1
+      expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+    it 'should not throw error when a task not exists as pipeline and raiseError is false', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, pipeline:true, raiseError:false, tasks:['Add1':1, 'None':23])
+      expect(result).to.be.equal 2
+      expect(errs).have.length 1
+      expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+    it 'should throw error when a task not exists as pipeline with string', ->
+      errs = fakeLogger.errors
+      result = tasks.executeSync(logger:fakeLogger, pipeline:true, raiseError:false, tasks:['Add1':2, 'None'])
+      expect(result).to.be.equal 3
+      expect(errs).have.length 1
+      expect(errs[0][0]).be.equal 'Task "None" is not exists.'
 
     it 'should force invalid tasks to continue', ->
       errs = fakeLogger.errors

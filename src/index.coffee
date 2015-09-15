@@ -22,6 +22,9 @@ module.exports = class SeriesTask
     pipeline:
       type: 'Boolean'
       value: false
+    raiseError:
+      type: 'Boolean'
+      value: true
     logger: # it should be an object with write method at least.
       type: 'Object'
       clone: false
@@ -43,20 +46,20 @@ module.exports = class SeriesTask
         else if value?
           throw new TypeError 'the logger should be an object'
   constructor: -> return super
-  error: (err, aOptions, aTask, raiseError = true)->
+  error: (err, aOptions, aTask)->
     aOptions ?= @
+    raiseError = aOptions.raiseError
     if isString err
       err = new TypeError err
-    if aOptions.force or !raiseError
-      if aOptions.logger
-        if aTask
-          aOptions.logger.status 'ERROR', aTask, err.message
-        else
-          aOptions.logger.status 'ERROR', err.message
-    else
-      throw err
+    if aOptions.logger
+      if aTask
+        aOptions.logger.status 'ERROR', aTask, err.message
+      else
+        aOptions.logger.status 'ERROR', err.message
+    throw err if !aOptions.force and raiseError
     err
-  _execTaskSync: (aTask, result, aOptions)->
+  _execTaskSync: (aTask, aResult, aOptions)->
+    result = true
     logger = aOptions.logger
     #vHasSingleStatus = logger and logger.single and logger.single.status
     if isString aTask
@@ -64,40 +67,43 @@ module.exports = class SeriesTask
       if task
         try
           logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
-          result.push task.executeSync()
-          logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', result if logger
+          aResult.push task.executeSync()
+          logger.status 'DEBUG', 'INVOKE', task.inspect(), 'aResult=', aResult if logger
           logger.status 'INVOKE', task.inspect(), 'ok' if logger
         catch err
-          @error err, aOptions, task.inspect()
-          result.push undefined
+          result = @error err, aOptions, task.inspect()
+          aResult.push undefined
       else
-        @error 'Task "'+aTask+'" is not exists.', aOptions
-        result.push undefined
+        result = @error 'Task "'+aTask+'" is not exists.', aOptions
+        aResult.push undefined
     else if isObject aTask
       for k,v of aTask
         task = Task k
         if task
           try
             logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
-            result.push task.executeSync(v)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', result if logger
+            aResult.push task.executeSync(v)
+            logger.status 'DEBUG', 'INVOKE', task.inspect(), 'aResult=', aResult if logger
             logger.status 'INVOKE', task.inspect(), 'ok' if logger
           catch err
-            @error err, aOptions, task
-            result.push undefined
+            result = @error err, aOptions, task
+            aResult.push undefined
+            break if !aOptions.force
         else
-          @error 'Task "'+k+'" is not exists.', aOptions
-          result.push undefined
+          result = @error 'Task "'+k+'" is not exists.', aOptions
+          aResult.push undefined
+          break if !aOptions.force
     else
-      @error INVALID_ARGUMENT, aOptions
-      result.push undefined
+      result = @error INVALID_ARGUMENT, aOptions
+      aResult.push undefined
     result
   _executeSync: (aOptions)->
     vTasks = aOptions.tasks
     result = []
     if isArray vTasks
-      vTasks.forEach (obj)=>
-        @_execTaskSync obj, result, aOptions
+      for obj in vTasks
+        if @_execTaskSync(obj, result, aOptions) isnt true
+          break if !aOptions.force
     else
       @_execTaskSync vTasks, result, aOptions
     result
@@ -107,7 +113,7 @@ module.exports = class SeriesTask
     result = null
     first = true
     if isArray vTasks
-      vTasks.forEach (obj, i)=>
+      for obj, i in vTasks
         if isString obj
           task = Task obj
           if task
@@ -119,6 +125,7 @@ module.exports = class SeriesTask
               logger.status 'INVOKE', task.inspect(), 'ok' if logger
             catch err
               @error err, aOptions, task.inspect()
+              break if !aOptions.force
           else
             @error 'Task "' + obj + '" is not exists.', aOptions
         else if isObject obj
@@ -132,11 +139,19 @@ module.exports = class SeriesTask
                 result = task.executeSync(result)
               catch err
                 @error err, aOptions, task.inspect()
+                if !aOptions.force
+                  vBreak = true
+                  break
             else
               @error 'Task "' + k + '" is not exists.', aOptions
+              if !aOptions.force
+                vBreak = true
+                break
+          break if vBreak
         else
           first = false if first
           @error INVALID_ARGUMENT, aOptions
+          break if !aOptions.force
     else
       for k,v of vTasks
         task = Task k
@@ -148,8 +163,10 @@ module.exports = class SeriesTask
             result = task.executeSync(result)
           catch err
             @error err, aOptions, task.inspect()
+            break if !aOptions.force
         else
           @error 'Task "' + k + '" is not exists.', aOptions
+          break if !aOptions.force
     result
   _execute: (aOptions, done)->
     logger = aOptions.logger

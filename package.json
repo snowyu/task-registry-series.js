@@ -1,7 +1,7 @@
 {
   "name": "task-registry-series",
   "description": "the series task run the task collection one by one.",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "homepage": "https://github.com/snowyu/task-registry-series.js",
   "repository": {
     "type": "git",

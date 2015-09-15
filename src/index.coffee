@@ -100,18 +100,24 @@ module.exports = class SeriesTask
   _executeSync: (aOptions)->
     vTasks = aOptions.tasks
     result = []
+    @lastError = null
     if isArray vTasks
       for obj in vTasks
-        if @_execTaskSync(obj, result, aOptions) isnt true
+        vError = @_execTaskSync(obj, result, aOptions)
+        if vError isnt true
+          @lastError = vError
           break if !aOptions.force
     else
-      @_execTaskSync vTasks, result, aOptions
+      vError = @_execTaskSync vTasks, result, aOptions
+      if vError isnt true
+        @lastError = vError
     result
   _executePipeSync: (aOptions)->
     logger = aOptions.logger
     vTasks = aOptions.tasks
     result = null
     first = true
+    @lastError = null
     if isArray vTasks
       for obj, i in vTasks
         if isString obj
@@ -125,10 +131,10 @@ module.exports = class SeriesTask
               logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
               logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
             catch err
-              @error err, aOptions, task.inspect(true, lastResult)
+              @lastError = @error err, aOptions, task.inspect(true, lastResult)
               break if !aOptions.force
           else
-            @error 'Task "' + obj + '" is not exists.', aOptions
+            @lastError = @error 'Task "' + obj + '" is not exists.', aOptions
         else if isObject obj
           for k,v of obj
             task = Task k
@@ -143,19 +149,19 @@ module.exports = class SeriesTask
                 logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
                 logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
               catch err
-                @error err, aOptions, task.inspect(true, lastResult)
+                @lastError = @error err, aOptions, task.inspect(true, lastResult)
                 if !aOptions.force
                   vBreak = true
                   break
             else
-              @error 'Task "' + k + '" is not exists.', aOptions
+              @lastError = @error 'Task "' + k + '" is not exists.', aOptions
               if !aOptions.force
                 vBreak = true
                 break
           break if vBreak
         else
           first = false if first
-          @error INVALID_ARGUMENT, aOptions
+          @lastError = @error INVALID_ARGUMENT, aOptions
           break if !aOptions.force
     else
       for k,v of vTasks
@@ -171,10 +177,10 @@ module.exports = class SeriesTask
             logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
             logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
           catch err
-            @error err, aOptions, task.inspect(true, lastResult)
+            @lastError = @error err, aOptions, task.inspect(true, lastResult)
             break if !aOptions.force
         else
-          @error 'Task "' + k + '" is not exists.', aOptions
+          @lastError = @error 'Task "' + k + '" is not exists.', aOptions
           break if !aOptions.force
     result
   _execute: (aOptions, done)->

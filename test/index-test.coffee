@@ -76,41 +76,48 @@ describe 'Tasks', ->
       result = tasks.executeSync 'Add1'
       expect(result).deep.equal [2]
       expect(Add1Task::_executeSync).be.callOnce
+      expect(tasks.lastError).to.be.not.exist
 
     it 'should run a single task as object', ->
       result = tasks.executeSync tasks: 'Add1': 2
       expect(result).deep.equal [3]
       expect(Add1Task::_executeSync).be.callOnce
+      expect(tasks.lastError).to.be.not.exist
 
     it 'should run a multi tasks', ->
       result = tasks.executeSync tasks:['Add1', 'Add2': 2]
       expect(result).deep.equal [2, 4]
       expect(Add1Task::_executeSync).be.callOnce
       expect(Add2Task::_executeSync).be.callOnce
+      expect(tasks.lastError).to.be.not.exist
 
     it 'should run a multi tasks via array', ->
       result = tasks.executeSync ['Add1':5, 'Add2': 2]
       expect(result).deep.equal [6, 4]
       expect(Add1Task::_executeSync).be.callOnce
       expect(Add2Task::_executeSync).be.callOnce
+      expect(tasks.lastError).to.be.not.exist
 
     it 'should run a multi tasks as pipeline', ->
       result = tasks.executeSync pipeline:true, tasks:['Add1':3, 'Add2']
       expect(result).deep.equal 6
       expect(Add1Task::_executeSync).be.callOnce
       expect(Add2Task::_executeSync).be.callOnce
+      expect(tasks.lastError).to.be.not.exist
 
     it 'should run a multi tasks as pipeline 2', ->
       result = tasks.executeSync pipeline:true, tasks:['Add1', 'Add2':45]
       expect(result).deep.equal 4
       expect(Add1Task::_executeSync).be.callOnce
       expect(Add2Task::_executeSync).be.callOnce
+      expect(tasks.lastError).to.be.not.exist
 
     it 'should run a multi tasks as pipeline 3', ->
       result = tasks.executeSync pipeline:true, tasks:'Add1':3, 'Add2':45
       expect(result).deep.equal 6
       expect(Add1Task::_executeSync).be.callOnce
       expect(Add2Task::_executeSync).be.callOnce
+      expect(tasks.lastError).to.be.not.exist
 
     it 'should throw error when an invalid arguments', ->
       should.throw tasks.executeSync.bind(tasks, tasks:[true, 'None']), 'Task argument should be a task name or object'
@@ -143,6 +150,7 @@ describe 'Tasks', ->
       expect(result[0]).to.be.not.exist
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'Task argument should be a task name or object'
+      expect(tasks.lastError).to.be.exist
     it 'should not throw error when a task throw error and raiseError is false', ->
       errs = fakeLogger.errors
       result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:'Error')
@@ -157,6 +165,7 @@ describe 'Tasks', ->
       expect(result[0]).to.be.not.exist
       expect(errs).have.length 1
       expect(errs[0][1]).be.equal 'MyError'
+      expect(tasks.lastError).to.be.exist
     it 'should not throw error when a task not exists and raiseError is false', ->
       errs = fakeLogger.errors
       result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:'None')
@@ -164,6 +173,7 @@ describe 'Tasks', ->
       expect(result[0]).to.be.not.exist
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+      expect(tasks.lastError).to.be.exist
     it 'should not throw error when a task not exists via array and raiseError is false', ->
       errs = fakeLogger.errors
       result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:['Add1', 'None'])
@@ -171,6 +181,7 @@ describe 'Tasks', ->
       expect(result[1]).to.be.not.exist
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+      expect(tasks.lastError).to.be.exist
     it 'should not throw error when a task not exists via object and raiseError is false', ->
       errs = fakeLogger.errors
       result = tasks.executeSync(logger:fakeLogger, raiseError:false, tasks:'Add1':1, 'None':23)
@@ -178,24 +189,28 @@ describe 'Tasks', ->
       expect(result[1]).to.be.not.exist
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+      expect(tasks.lastError).to.be.exist
     it 'should not throw error when a task not exists as pipeline via object and raiseError is false', ->
       errs = fakeLogger.errors
       result = tasks.executeSync(logger:fakeLogger, pipeline:true, raiseError:false, tasks:'Add1':1, 'None':23)
       expect(result).to.be.equal 2
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+      expect(tasks.lastError).to.be.exist
     it 'should not throw error when a task not exists as pipeline and raiseError is false', ->
       errs = fakeLogger.errors
       result = tasks.executeSync(logger:fakeLogger, pipeline:true, raiseError:false, tasks:['Add1':1, 'None':23])
       expect(result).to.be.equal 2
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+      expect(tasks.lastError).to.be.exist
     it 'should throw error when a task not exists as pipeline with string', ->
       errs = fakeLogger.errors
       result = tasks.executeSync(logger:fakeLogger, pipeline:true, raiseError:false, tasks:['Add1':2, 'None'])
       expect(result).to.be.equal 3
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'Task "None" is not exists.'
+      expect(tasks.lastError).to.be.exist
 
     it 'should force invalid tasks to continue', ->
       errs = fakeLogger.errors
@@ -203,6 +218,7 @@ describe 'Tasks', ->
       expect(result).be.not.exist
       expect(errs).have.length 1
       expect(errs[0][0]).be.equal 'missing tasks option'
+      expect(tasks.lastError).to.be.exist
     it 'should force tasks to continue', ->
       errs = fakeLogger.errors
       result = tasks.executeSync logger:fakeLogger, force:true, tasks:['Error', true, 'Add1', 'None', {Add2:12, None:11, Add1:2}]

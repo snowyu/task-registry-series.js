@@ -371,7 +371,7 @@ module.exports = class SeriesTask
     if vTasks
       logger = aOptions.logger
       # TODO: the INVOKE logging should move to task-registry.
-      logger.status 'DEBUG', 'INVOKE', @inspect(true) if logger
+      logger.status 'DEBUG', 'INVOKE', @inspect(true, aOptions) if logger
       if vPipeline
         result = @_executePipeSync(aOptions)
       else
@@ -397,7 +397,7 @@ module.exports = class SeriesTask
     logger = aOptions.logger
     if vTasks
       # TODO: the INVOKE logging should move to task-registry.
-      logger.status 'DEBUG', 'INVOKE', @inspect(true) if logger
+      logger.status 'DEBUG', 'INVOKE', @inspect(true, aOptions) if logger
       if vPipeline
         result = @_executePipe(aOptions, done)
       else

@@ -68,7 +68,7 @@ module.exports = class SeriesTask
         try
           logger.status 'DEBUG', 'INVOKE', task.inspect(true) if logger
           aResult.push task.executeSync()
-          logger.status 'DEBUG', 'INVOKE', task.inspect(true), 'result=', aResult if logger
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true), 'result=', aResult[aResult.length-1] if logger
           logger.status 'INVOKE', task.inspect(true), 'ok' if logger
         catch err
           result = @error err, aOptions, task.inspect(true)
@@ -83,7 +83,7 @@ module.exports = class SeriesTask
           try
             logger.status 'DEBUG', 'INVOKE', task.inspect(true, v) if logger
             aResult.push task.executeSync(v)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(true, v), 'result=', aResult if logger
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, v), 'result=', aResult[aResult.length-1] if logger
             logger.status 'INVOKE', task.inspect(true, v), 'ok' if logger
           catch err
             result = @error err, aOptions, task.inspect(true, v)

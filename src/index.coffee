@@ -66,12 +66,12 @@ module.exports = class SeriesTask
       task = Task aTask
       if task
         try
-          logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true) if logger
           aResult.push task.executeSync()
-          logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', aResult if logger
-          logger.status 'INVOKE', task.inspect(), 'ok' if logger
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true), 'result=', aResult if logger
+          logger.status 'INVOKE', task.inspect(true), 'ok' if logger
         catch err
-          result = @error err, aOptions, task.inspect()
+          result = @error err, aOptions, task.inspect(true)
           aResult.push undefined
       else
         result = @error 'Task "'+aTask+'" is not exists.', aOptions
@@ -81,12 +81,12 @@ module.exports = class SeriesTask
         task = Task k
         if task
           try
-            logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, v) if logger
             aResult.push task.executeSync(v)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', aResult if logger
-            logger.status 'INVOKE', task.inspect(), 'ok' if logger
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, v), 'result=', aResult if logger
+            logger.status 'INVOKE', task.inspect(true, v), 'ok' if logger
           catch err
-            result = @error err, aOptions, task
+            result = @error err, aOptions, task.inspect(true, v)
             aResult.push undefined
             break if !aOptions.force
         else
@@ -118,13 +118,14 @@ module.exports = class SeriesTask
           task = Task obj
           if task
             first = false if first
+            lastResult = result
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult) if logger
             try
-              logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
               result = task.executeSync(result)
-              logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', result if logger
-              logger.status 'INVOKE', task.inspect(), 'ok' if logger
+              logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
+              logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
             catch err
-              @error err, aOptions, task.inspect()
+              @error err, aOptions, task.inspect(true, lastResult)
               break if !aOptions.force
           else
             @error 'Task "' + obj + '" is not exists.', aOptions
@@ -135,10 +136,14 @@ module.exports = class SeriesTask
               result = v
               first = false
             if task
+              lastResult = result
+              logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult) if logger
               try
                 result = task.executeSync(result)
+                logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
+                logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
               catch err
-                @error err, aOptions, task.inspect()
+                @error err, aOptions, task.inspect(true, lastResult)
                 if !aOptions.force
                   vBreak = true
                   break
@@ -159,10 +164,14 @@ module.exports = class SeriesTask
           result = v
           first = false
         if task
+          lastResult = result
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult) if logger
           try
             result = task.executeSync(result)
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
+            logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
           catch err
-            @error err, aOptions, task.inspect()
+            @error err, aOptions, task.inspect(true, lastResult)
             break if !aOptions.force
         else
           @error 'Task "' + k + '" is not exists.', aOptions
@@ -181,14 +190,15 @@ module.exports = class SeriesTask
       _nextObj = (name)->
         task = Task name
         if task
-          logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
-          task.execute aTask[name], once (err, result)->
+          v = aTask[name]
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true, v) if logger
+          task.execute v, once (err, result)->
             if err
-              logger.status 'ERROR', task.inspect(), err.message if logger
+              logger.status 'ERROR', task.inspect(true, v), err.message if logger
               unless aOptions.force
                 return done(err)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', result if logger
-            logger.status 'INVOKE', task.inspect(), 'ok' if logger
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, v), 'result=', result if logger
+            logger.status 'INVOKE', task.inspect(true, v), 'ok' if logger
             results.push result
             if ++vObjIx < vObjLen
               _nextObj(keys[vObjIx])
@@ -214,14 +224,14 @@ module.exports = class SeriesTask
       if isString aTask
         task = Task aTask
         if task
-          logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true) if logger
           task.execute once (err, result)->
             if err
-              logger.status 'ERROR', task.inspect(), err.message if logger
+              logger.status 'ERROR', task.inspect(true), err.message if logger
               return done(err) unless aOptions.force
             results.push result
-            logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', result if logger
-            logger.status 'INVOKE', task.inspect(), 'ok' if logger
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true), 'result=', result if logger
+            logger.status 'INVOKE', task.inspect(true), 'ok' if logger
             if ++idx < length
               nextArray(vTasks[idx])
             else
@@ -272,15 +282,15 @@ module.exports = class SeriesTask
           if first
             results = aTask[name]
             first = false
-          logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true, results) if logger
           task.execute results, once (err, result)->
             if err
-              logger.status 'ERROR', task.inspect(), err.message if logger
+              logger.status 'ERROR', task.inspect(true, results), err.message if logger
               unless aOptions.force
                 return done(err)
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, results), 'result=', result if logger
+            logger.status 'INVOKE', task.inspect(results), 'ok' if logger
             results = result
-            logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', result if logger
-            logger.status 'INVOKE', task.inspect(), 'ok' if logger
             if ++vObjIx < vObjLen
               _nextObj(keys[vObjIx])
             else if length and ++idx < length
@@ -305,14 +315,14 @@ module.exports = class SeriesTask
         task = Task aTask
         if task
           first = false if first
-          logger.status 'DEBUG', 'INVOKE', task.inspect() if logger
+          logger.status 'DEBUG', 'INVOKE', task.inspect(true, results) if logger
           task.execute results, once (err, result)->
             if err
-              logger.status 'ERROR', task.inspect(), err.message if logger
+              logger.status 'ERROR', task.inspect(true, results), err.message if logger
               return done(err) unless aOptions.force
+            logger.status 'DEBUG', 'INVOKE', task.inspect(true, results), 'result=', result if logger
+            logger.status 'INVOKE', task.inspect(true, results), 'ok' if logger
             results = result
-            logger.status 'DEBUG', 'INVOKE', task.inspect(), 'result=', result if logger
-            logger.status 'INVOKE', task.inspect(), 'ok' if logger
             if ++idx < length
               nextArray(vTasks[idx])
             else
@@ -361,7 +371,7 @@ module.exports = class SeriesTask
     if vTasks
       logger = aOptions.logger
       # TODO: the INVOKE logging should move to task-registry.
-      logger.status 'DEBUG', 'INVOKE', @inspect() if logger
+      logger.status 'DEBUG', 'INVOKE', @inspect(true) if logger
       if vPipeline
         result = @_executePipeSync(aOptions)
       else
@@ -387,7 +397,7 @@ module.exports = class SeriesTask
     logger = aOptions.logger
     if vTasks
       # TODO: the INVOKE logging should move to task-registry.
-      logger.status 'DEBUG', 'INVOKE', @inspect() if logger
+      logger.status 'DEBUG', 'INVOKE', @inspect(true) if logger
       if vPipeline
         result = @_executePipe(aOptions, done)
       else

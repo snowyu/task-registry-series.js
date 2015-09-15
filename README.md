@@ -42,13 +42,18 @@ tasks.execSync(aOptions)/task.exec(aOptions, done)
 
 * aOptions *(Object|Array|String)*: it's a tasks if it's array.
   it's a task name if it's string.
-  * pipeline *(Boolean)*: whether the pass the result as a pipeline. default to false.
+  * `pipeline` *(Boolean)*: whether the pass the result as a pipeline. default to false.
    * If true, the first task will be called with the arguments, and each subsequence task will be called with the result of the previous task.
    * If false, Each task will be called with the arguments, and each may return a value.
-  * tasks *(ArrayOf String|Object)*: the tasks to run.
+  * `tasks` *(ArrayOf String|Object)*: the tasks to run.
     * Object:
       * key: it's the task name
       * value: it's the arugments object to be passed.
+  * `force` *(Boolean)*: whether force to continue executing even though a task occur error.
+    default to false, ignore the `raiseError` if true.
+  * `raiseError` *(Boolean)*: whether throw the error.
+    default to true.
+  * `logger` *(Logger Object)*: default to null.
 
 
 

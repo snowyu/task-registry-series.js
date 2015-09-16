@@ -68,7 +68,7 @@ module.exports = class SeriesTask
         try
           logger.status 'DEBUG', 'INVOKE', task.inspect(true) if logger
           aResult.push task.executeSync()
-          logger.status 'DEBUG', 'INVOKE', task.inspect(true), 'result=', aResult[aResult.length-1] if logger
+          logger.status 'TRACE', 'INVOKE', task.inspect(true), 'result=', aResult[aResult.length-1] if logger
           logger.status 'INVOKE', task.inspect(true), 'ok' if logger
         catch err
           result = @error err, aOptions, task.inspect(true)
@@ -83,7 +83,7 @@ module.exports = class SeriesTask
           try
             logger.status 'DEBUG', 'INVOKE', task.inspect(true, v) if logger
             aResult.push task.executeSync(v)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(true, v), 'result=', aResult[aResult.length-1] if logger
+            logger.status 'TRACE', 'INVOKE', task.inspect(true, v), 'result=', aResult[aResult.length-1] if logger
             logger.status 'INVOKE', task.inspect(true, v), 'ok' if logger
           catch err
             result = @error err, aOptions, task.inspect(true, v)
@@ -128,7 +128,7 @@ module.exports = class SeriesTask
             logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult) if logger
             try
               result = task.executeSync(result)
-              logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
+              logger.status 'TRACE', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
               logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
             catch err
               @lastError = @error err, aOptions, task.inspect(true, lastResult)
@@ -146,7 +146,7 @@ module.exports = class SeriesTask
               logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult) if logger
               try
                 result = task.executeSync(result)
-                logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
+                logger.status 'TRACE', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
                 logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
               catch err
                 @lastError = @error err, aOptions, task.inspect(true, lastResult)
@@ -174,7 +174,7 @@ module.exports = class SeriesTask
           logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult) if logger
           try
             result = task.executeSync(result)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
+            logger.status 'TRACE', 'INVOKE', task.inspect(true, lastResult), 'result=', result if logger
             logger.status 'INVOKE', task.inspect(true, lastResult), 'ok' if logger
           catch err
             @lastError = @error err, aOptions, task.inspect(true, lastResult)
@@ -203,7 +203,7 @@ module.exports = class SeriesTask
               logger.status 'ERROR', task.inspect(true, v), err.message if logger
               unless aOptions.force
                 return done(err)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(true, v), 'result=', result if logger
+            logger.status 'TRACE', 'INVOKE', task.inspect(true, v), 'result=', result if logger
             logger.status 'INVOKE', task.inspect(true, v), 'ok' if logger
             results.push result
             if ++vObjIx < vObjLen
@@ -236,7 +236,7 @@ module.exports = class SeriesTask
               logger.status 'ERROR', task.inspect(true), err.message if logger
               return done(err) unless aOptions.force
             results.push result
-            logger.status 'DEBUG', 'INVOKE', task.inspect(true), 'result=', result if logger
+            logger.status 'TRACE', 'INVOKE', task.inspect(true), 'result=', result if logger
             logger.status 'INVOKE', task.inspect(true), 'ok' if logger
             if ++idx < length
               nextArray(vTasks[idx])
@@ -294,7 +294,7 @@ module.exports = class SeriesTask
               logger.status 'ERROR', task.inspect(true, results), err.message if logger
               unless aOptions.force
                 return done(err)
-            logger.status 'DEBUG', 'INVOKE', task.inspect(true, results), 'result=', result if logger
+            logger.status 'TRACE', 'INVOKE', task.inspect(true, results), 'result=', result if logger
             logger.status 'INVOKE', task.inspect(results), 'ok' if logger
             results = result
             if ++vObjIx < vObjLen
@@ -326,7 +326,7 @@ module.exports = class SeriesTask
             if err
               logger.status 'ERROR', task.inspect(true, results), err.message if logger
               return done(err) unless aOptions.force
-            logger.status 'DEBUG', 'INVOKE', task.inspect(true, results), 'result=', result if logger
+            logger.status 'TRACE', 'INVOKE', task.inspect(true, results), 'result=', result if logger
             logger.status 'INVOKE', task.inspect(true, results), 'ok' if logger
             results = result
             if ++idx < length
@@ -377,11 +377,16 @@ module.exports = class SeriesTask
     if vTasks
       logger = aOptions.logger
       # TODO: the INVOKE logging should move to task-registry.
-      logger.status 'DEBUG', 'INVOKE', @inspect(true, aOptions) if logger
+      if logger
+        vTasksStr = @inspect(true, aOptions)
+        logger.status 'DEBUG', 'INVOKE', vTasksStr
       if vPipeline
         result = @_executePipeSync(aOptions)
       else
         result = @_executeSync(aOptions)
+      if logger
+        logger.status 'TRACE', 'INVOKE', vTasksStr, 'results=', result
+        logger.status 'DEBUG', 'INVOKE', vTasksStr, 'Done.'
     else
       err = new TypeError MISS_TASKS_OPTION
       @error err, aOptions
@@ -403,11 +408,20 @@ module.exports = class SeriesTask
     logger = aOptions.logger
     if vTasks
       # TODO: the INVOKE logging should move to task-registry.
-      logger.status 'DEBUG', 'INVOKE', @inspect(true, aOptions) if logger
-      if vPipeline
-        result = @_executePipe(aOptions, done)
+      if logger
+        vTasksStr = @inspect(true, aOptions)
+        logger.status 'DEBUG', 'INVOKE', vTasksStr
+        vDone = (err, result)->
+          logger.status 'TRACE', 'INVOKE', vTasksStr, 'results=', result
+          done err, result
+          logger.status 'DEBUG', 'INVOKE', vTasksStr, 'Done.'
+          return
       else
-        result = @_execute(aOptions, done)
+        vDone = done
+      if vPipeline
+        result = @_executePipe aOptions, vDone
+      else
+        result = @_execute aOptions, vDone
     else
       err = new TypeError MISS_TASKS_OPTION
       logger.status 'ERROR', MISS_TASKS_OPTION if logger
